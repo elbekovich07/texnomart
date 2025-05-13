@@ -1,11 +1,11 @@
-from django.contrib.auth.models import User
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.text import slugify
 
 
 # Category
 class Category(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, db_index=True)
     image = models.ImageField(upload_to='category/images/')
     slug = models.SlugField(max_length=100, unique=True)
 
@@ -19,6 +19,10 @@ class Category(models.Model):
 
     class Meta:
         verbose_name_plural = 'Categories'
+        indexes = [
+            models.Index(fields=['name', 'slug']),
+        ]
+        ordering = ['name']
 
 
 # Product
@@ -61,12 +65,14 @@ class Image(models.Model):
 
 # Like
 class Like(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey('app.CustomUser', on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="likes_product")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ("user", "product")
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'product'], name='unique_like')
+        ]
 
     def __str__(self):
         return f"{self.user} liked {self.product}"
@@ -74,17 +80,19 @@ class Like(models.Model):
 
 # Favorite
 class Favorite(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey('app.CustomUser', on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     added_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ("user", "product")
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'product'], name='unique_favorite')
+        ]
 
 
 # Comment
 class Comment(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey('app.CustomUser', on_delete=models.CASCADE, related_name='comments')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -96,7 +104,7 @@ class Comment(models.Model):
 
 # Cart
 class Cart(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="cart")
+    user = models.ForeignKey('app.CustomUser', on_delete=models.CASCADE, related_name="cart")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -113,7 +121,9 @@ class CartItem(models.Model):
     quantity = models.PositiveIntegerField(default=1)
 
     class Meta:
-        unique_together = ("cart", "product")
+        constraints = [
+            models.UniqueConstraint(fields=['cart', 'product'], name='unique_cart_item')
+        ]
 
     def __str__(self):
         return f"{self.product.name} x {self.quantity}"
@@ -121,19 +131,10 @@ class CartItem(models.Model):
     def total_price(self):
         return self.product.price * self.quantity
 
-    def save(self, *args, **kwargs):
-        if not self.pk:
-            if self.product.stock >= self.quantity:
-                self.product.stock -= self.quantity
-                self.product.save()
-            else:
-                raise ValueError("Yetarli mahsulot zaxirasi mavjud emas.")
-        else:
-            old_quantity = CartItem.objects.get(pk=self.pk).quantity
-            difference = self.quantity - old_quantity
-            if self.product.stock >= difference:
-                self.product.stock -= difference
-                self.product.save()
-            else:
-                raise ValueError("Yetarli mahsulot zaxirasi mavjud emas.")
-        super().save(*args, **kwargs)
+
+class CustomUser(AbstractUser):
+    name = models.CharField(max_length=200, db_index=True)
+    phone = models.CharField(max_length=15, db_index=True, blank=True, null=True)
+
+    def __str__(self):
+        return self.username

@@ -1,6 +1,7 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
 
-from app.models import Category, Product, Like, Image, Comment, Favorite, CartItem
+from app.models import Category, Product, Like, Image, Comment, Favorite, CartItem, CustomUser
 
 
 # Register your models here.
@@ -44,3 +45,13 @@ class FavoriteAdmin(admin.ModelAdmin):
 class CartItemAdmin(admin.ModelAdmin):
     list_display = ('cart', 'product', 'quantity')
     list_filter = ('cart',)
+
+
+class CustomUserAdmin(UserAdmin):
+    model = CustomUser
+    list_display = ['username', 'email', 'name', 'phone', 'is_staff', 'is_active']
+    list_filter = ['is_staff', 'is_active']
+    search_fields = ['username', 'email', 'name']
+    ordering = ['username']
+
+admin.site.register(CustomUser, CustomUserAdmin)

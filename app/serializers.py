@@ -25,10 +25,13 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_is_liked(self, obj):
         user = self.context.get('request').user
-        return obj.likes.filter(user=user).exists() if user.is_authenticated else False
+        if not user.is_authenticated:
+            return False
+
+        return any(like.user_id == user.id for like in obj.likes_product.all())
 
     def get_like_count(self, obj):
-        return obj.likes.count()
+        return getattr(obj, 'like_count', obj.likes_product.count())
 
 
 class LikeSerializer(serializers.ModelSerializer):
