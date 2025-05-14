@@ -14,4 +14,8 @@ router.register('cart-item', CartItemViewSet, basename='cart-item'),
 
 urlpatterns = [
     path('', include(router.urls)),
+    # Users
+    path('auth/register/', UserRegisterJWTView.as_view(), name='jwt_register'),
+    path('auth/me/', UserMeView.as_view(), name='user_me'),
+    path('auth/update/', UserUpdateView.as_view(), name='user_update'),
 ]

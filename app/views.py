@@ -1,8 +1,11 @@
 from django.db.models import Count, Prefetch
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from rest_framework import status
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from app.pagination import CustomPagination
 from app.serializers import *
@@ -16,7 +19,13 @@ class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
     pagination_class = CustomPagination
 
+    @method_decorator(cache_page(60))
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
+    @method_decorator(cache_page(60))
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.select_related('category') \
@@ -25,11 +34,18 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     pagination_class = CustomPagination
 
+    @method_decorator(cache_page(60))
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @method_decorator(cache_page(60))
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
     @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
     def like(self, request, pk=None):
         product = self.get_object()
         user = request.user
-
         like, created = Like.objects.get_or_create(user=user, product=product)
         if created:
             product.likes_product.add(like)
@@ -40,18 +56,20 @@ class ProductViewSet(viewsets.ModelViewSet):
     def unlike(self, request, pk=None):
         product = self.get_object()
         user = request.user
-
         like = Like.objects.filter(user=user, product=product).first()
         if like:
             like.delete()
             return Response({"liked": False}, status=status.HTTP_200_OK)
         return Response({"error": "Like not found."}, status=status.HTTP_400_BAD_REQUEST)
 
-
 class LikedViewSet(viewsets.ModelViewSet):
     serializer_class = LikeSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = CustomPagination
+
+    @method_decorator(cache_page(60))
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
         return Like.objects.select_related('user', 'product', 'product__category') \
@@ -64,6 +82,8 @@ class LikedViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
+@method_decorator(cache_page(60), name='list')
+@method_decorator(cache_page(60), name='retrieve')
 class FavoriteViewSet(viewsets.ModelViewSet):
     serializer_class = FavoriteSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -78,6 +98,7 @@ class FavoriteViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
+@method_decorator(cache_page(60), name='list')
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
     pagination_class = CustomPagination
@@ -95,6 +116,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+@method_decorator(cache_page(60), name='list')
 class CartViewSet(viewsets.ModelViewSet):
     serializer_class = CartSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -116,6 +138,7 @@ class CartViewSet(viewsets.ModelViewSet):
         return Response({"error": "Cart not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
+@method_decorator(cache_page(60), name='list')
 class CartItemViewSet(viewsets.ModelViewSet):
     serializer_class = CartItemSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -124,3 +147,40 @@ class CartItemViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return CartItem.objects.select_related('cart', 'product', 'product__category') \
             .filter(cart__user=self.request.user)
+
+
+User = get_user_model()
+
+
+class UserRegisterJWTView(generics.CreateAPIView):
+    serializer_class = UserRegisterSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            'user': UserSerializer(user).data,
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }, status=status.HTTP_201_CREATED)
+
+
+class UserMeView(generics.RetrieveAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+
+class UserUpdateView(generics.UpdateAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user

@@ -1,6 +1,7 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from app.models import Category, Product, Like, Favorite, Comment, CartItem, Cart
+from app.models import Category, Product, Like, Favorite, Comment, CartItem, Cart, CustomUser
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -93,3 +94,31 @@ class CartSerializer(serializers.ModelSerializer):
 
     def get_total_price(self, obj):
         return obj.total_price()
+
+
+User = get_user_model()
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'email', 'name', 'phone']
+        read_only_fields = ['id']
+
+
+class UserRegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'password', 'name', 'phone']
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data.get('email', ''),
+            password=validated_data['password'],
+            name=validated_data.get('name', ''),
+            phone=validated_data.get('phone', '')
+        )
+        return user
