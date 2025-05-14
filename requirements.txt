@@ -6,6 +6,7 @@ django-debug-toolbar==5.2.0
 django-filter==25.1
 djangorestframework==3.16.0
 djangorestframework_simplejwt==5.5.0
+dotenv==0.9.9
 drf-spectacular==0.28.0
 drf-yasg==1.21.10
 inflection==0.5.1
@@ -16,6 +17,7 @@ packaging==25.0
 pillow==11.2.1
 psycopg2==2.9.10
 PyJWT==2.9.0
+python-dotenv==1.1.0
 pytz==2025.2
 PyYAML==6.0.2
 referencing==0.36.2
