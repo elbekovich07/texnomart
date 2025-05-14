@@ -8,5 +8,12 @@
       <jdbc-url>jdbc:postgresql://localhost:5432/texnomart</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
+    <data-source source="LOCAL" name="railway@mainline.proxy.rlwy.net" uuid="4ad0e1c1-f1d0-46bd-b604-091d5f323757">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://mainline.proxy.rlwy.net:57428/railway</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>
